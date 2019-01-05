@@ -1,0 +1,61 @@
+---
+ - hosts: nexus
+   become: true
+   vars:
+     - java_version: 1.8.0
+     - nexus_version: 3.0.2
+   tasks:
+     - name: Installing Java-{{java_version}} on Nexus Server
+       yum:
+         name: java-{{java_version}}-openjdk-devel
+         state: present
+     - name: Updating Java-{{java_version}} Version
+       alternatives:
+         name: java
+         path: /usr/lib/jvm/jre-{{java_version}}-openjdk.x86_64/bin/java
+     - name: Updating Javac-{{java_version}} Version
+       alternatives:
+         name: javac
+         path: /usr/lib/jvm/java-{{java_version}}-openjdk.x86_64/bin/javac
+     - name: Craeating Nexus Group
+       group:
+         name: nexus
+     - name: Craeating Nexus User
+       user:
+         name: nexus
+         group: nexus
+         home: /usr/share/nexus
+         createhome: no
+     - name: Downloding Nexus tar file
+       get_url:
+         url: https://sonatype-download.global.ssl.fastly.net/nexus/3/nexus-{{nexus_version}}-02-unix.tar.gz
+         dest: /opt/nexus-{{nexus_version}}-02-unix.tar.gz
+     - name: Extracting  Nexus Tar file
+       command: chdir=/usr/share /bin/tar xvf /opt/nexus-{{nexus_version}}-02-unix.tar.gz -C /opt/ creates=/opt/nexus-{{nexus_version}}-02
+     - name: Symlink install directory
+       file: src=/opt/nexus-{{nexus_version}}-02 path=/usr/share/nexus state=link
+     - name: changing owner ship of Nexus
+       file: path=/usr/share/nexus/ owner=nexus group=nexus state=directory recurse=yes
+     - name: Softlinking /usr/share/nexus/bin/nexus to /etc/init.d
+       file: src=/usr/share/nexus/bin/nexus path=/etc/init.d/nexus state=link
+       notify:
+         - Restarting nexus Server
+     - name: Run Nexus as Nexus user
+       lineinfile:
+         path: /usr/share/nexus/bin/nexus.rc
+         line: "{{item.line}}"
+         state: present
+         create: yes
+       with_items:
+       with_items:
+         - {line: 'run_as_user="nexus"'}
+       notify:
+         - Restarting nexus Server
+     - name: Starting Nexus
+       service:
+          name: nexus
+          state: started
+          enabled: yes
+   handlers:
+     - name: Restarting nexus Server
+       service: name=nexus state=restarted

@@ -1,0 +1,61 @@
+---
+ - hosts: tomcat
+   become: true
+   vars_files:
+     - ./vars.yml
+   tasks:
+     - name: Installing Java-{{java_version}} on Tomact Server
+       yum:
+         name: java-{{java_version}}-openjdk-devel
+         state: present
+     - name: Updating Java-{{java_version}} Version
+       alternatives:
+         name: java
+         path: /usr/lib/jvm/jre-{{java_version}}-openjdk.x86_64/bin/java
+     - name: Updating Javac-{{java_version}} Version
+       alternatives:
+         name: javac
+         path: /usr/lib/jvm/java-{{java_version}}-openjdk.x86_64/bin/javac
+     - name: Craeating Tomcat Group
+       group:
+         name: tomcat
+     - name: Craeating Tomcat User
+       user:
+         name: tomcat
+         group: tomcat
+         home: /usr/share/tomcat
+         createhome: no
+     - name: Downloding Tomcat-{{tomcat_version}} tar file
+       get_url:
+         url: https://www-eu.apache.org/dist/tomcat/tomcat-8/v{{tomcat_version}}/bin/apache-tomcat-{{tomcat_version}}.tar.gz
+         dest: /opt/apache-tomcat-{{tomcat_version}}.tar.gz
+     - name: Extracting  Tomcat archive
+       command: chdir=/usr/share /bin/tar xvf /opt/apache-tomcat-{{tomcat_version}}.tar.gz -C /opt/ creates=/opt/apache-tomcat-{{tomcat_version}}
+     - name: Symlink install directory
+       file: src=/opt/apache-tomcat-{{tomcat_version}} path=/usr/share/tomcat state=link
+     - name: changing owner ship of tomcat
+       file: path=/usr/share/tomcat/ owner=tomcat group=tomcat state=directory recurse=yes
+     - name: Coping Tomcat script to /etc/init.d
+       copy: src=./tomcat.sh dest=/etc/init.d/tomcat mode=0755
+       notify:
+         - Restarting tomcat Server
+     - name: Removing Restrections
+       copy: src=./context.xml dest=/usr/share/tomcat/webapps/manager/META-INF/context.xml
+       notify:
+         - Restarting tomcat Server
+     - name: Creating Users
+       copy: src=./tomcat-users.xml dest=/usr/share/tomcat/conf/tomcat-users.xml
+       notify:
+         - Restarting tomcat Server
+     - name: Starting tomcat
+       service:
+          name: tomcat
+          state: started
+          enabled: yes
+     - name: Deploying war file to tomcat
+       copy: src=/home/ubuntu/sample-app/target/myapp.war dest=/usr/share/tomcat/webapps/myapp.war
+       notify:
+         - Restarting tomcat Server
+   handlers:
+     - name: Restarting tomcat Server
+       service: name=tomcat state=restarted

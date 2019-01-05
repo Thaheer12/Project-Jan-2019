@@ -1,0 +1,43 @@
+---
+ - hosts: redhat
+   become: true
+   vars:
+     - java_version: 1.8.0
+     - maven_version: 3.3.9
+   tasks:
+     - name: Installing java-{{java_version}}-openjdk
+       yum:
+         name: java-{{java_version}}-openjdk-devel
+         state: present
+     - name: Updating java version
+       alternatives:
+         name: java
+         path: /usr/lib/jvm/jre-{{java_version}}-openjdk.x86_64/bin/java
+     - name: Updating javac version
+       alternatives:
+         name: javac
+         path: /usr/lib/jvm/java-{{java_version}}-openjdk.x86_64/bin/javac
+     - name: Downloding Maven tar file version-{{maven_vension}}
+       get_url:
+         url: http://www-eu.apache.org/dist/maven/maven-3/{{maven_version}}/binaries/apache-maven-{{maven_version}}-bin.tar.gz
+         dest: /opt/apache-maven-{{maven_version}}-bin.tar.gz
+     - name: Extarcting Maven tar file
+       command: chdir=/usr/share tar xvf /opt/apache-maven-{{maven_version}}-bin.tar.gz -C /opt/ creates=/opt/apache-maven-{{maven_version}}
+     - name: Soft link between maven bin and default bin
+       file:
+         src: /opt/apache-maven-{{maven_version}}
+         dest: /usr/bin/mvn
+         state: link
+     - name: Makinkg globally for all users
+       lineinfile:
+         path: /home/ec2-user/.bashrc
+         line: "{{item.line}}"
+         state: present
+         create: yes
+       with_items:
+       with_items:
+         - {line: 'export M2_HOME=/opt/apache-maven-{{maven_version}}'}
+         - {line: 'export M2=$M2_HOME/bin'}
+         - {line: 'export PATH=$M2:$PATH'}
+     - name: Restarting .bashrc file
+       shell: "source /home/ec2-user/.bashrc"
