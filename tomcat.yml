@@ -1,0 +1,11 @@
+---
+ - hosts: tomcat
+   become: true
+   tasks:
+     - name: Deploying war file to tomcat
+       copy: src=/home/ubuntu/python/myapp.war dest=/usr/share/tomcat/webapps/myapp.war
+       notify:
+         - Restarting tomcat Server
+   handlers:
+     - name: Restarting tomcat Server
+       service: name=tomcat state=restarted

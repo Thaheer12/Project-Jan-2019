@@ -1,0 +1,6 @@
+[tomcat:vars]
+ansible_user=ec2-user
+ansible_private_key_file=/home/ubuntu/python/a.pem
+[tomcat]
+145.123.0.104
+145.123.0.12
