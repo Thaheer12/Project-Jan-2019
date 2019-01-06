@@ -1,0 +1,11 @@
+rm -rf myapp.war
+a=$(cat pom.xml | grep "<version>" |awk '{print $1}' | sed "s/<version>//" |head -1 | sed "s/<.*//")
+wget http://145.123.0.41:8081/repository/myapp_release/in/mpcechno/myapp/$a/myapp-$a.war
+mv *.war myapp.war
+scp -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no myapp.war ubuntu@145.123.1.40:/home/ubuntu/python/myapp.war
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "rm -rf /home/ubuntu/python/inventory"
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "python /home/ubuntu/python/file.py"
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "sudo ansible-playbook /home/ubuntu/python/hosts.yml"
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "sudo chown ubuntu:ubuntu /home/ubuntu/python/inventory"
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "cat /home/ubuntu/python/output.txt >> /home/ubuntu/python/inventory"
+ssh -i /var/lib/jenkins/a.pem -o StrictHostKeyChecking=no ubuntu@145.123.1.40 "sudo ansible-playbook -i /home/ubuntu/python/inventory /home/ubuntu/python/tomcat.yml"
